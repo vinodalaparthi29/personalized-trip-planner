@@ -1,0 +1,20 @@
+# Secrets
+.env
+credentials.json
+token.json
+tokens/
+
+# Disposable intermediates
+.tmp/*
+!.tmp/.gitkeep
+
+# Personal trip inputs and generated deliverables
+inputs/*
+!inputs/trip_request.template.json
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

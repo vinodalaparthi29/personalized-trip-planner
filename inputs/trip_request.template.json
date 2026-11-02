@@ -1,0 +1,22 @@
+{
+  "traveler_name": "Asha",
+  "traveler_email": "asha@example.com",
+  "destination": "Lisbon, Portugal",
+  "origin_city": "Hyderabad, India",
+  "start_date": "2027-03-10",
+  "num_days": 5,
+  "what_they_like": [
+    "live music",
+    "old architecture",
+    "local food"
+  ],
+  "why_visiting": "A first trip to Europe to celebrate a new job.",
+  "trip_goals": [
+    "see the city's best viewpoints",
+    "learn to cook one local dish"
+  ],
+  "budget_level": "mid-range",
+  "group_type": "couple",
+  "pace": "balanced",
+  "special_needs": "vegetarian"
+}
