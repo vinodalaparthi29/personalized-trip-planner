@@ -145,7 +145,7 @@ def main():
     if not pending:
         return print("No pending trip requests.")
     if arg == "--list":
-        for r in pending:
+        for r in map(to_request, pending):
             print(f"{r['response_id']}  {r['traveler_name']}: {r['destination']} from {r['start_date']}")
         return print(f"{len(pending)} pending.")
 
