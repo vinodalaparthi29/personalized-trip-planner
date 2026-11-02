@@ -30,7 +30,7 @@ SERIAL_EPOCH = datetime(1899, 12, 30)  # Sheets date serial 0
 # Request field -> phrase its Form question title must contain (case-insensitive). See README.
 QUESTIONS = {
     "traveler_name": "your name",
-    "traveler_email": "email",
+    "traveler_email": "mail",  # "Email", "Gmail address", ...
     "destination": "destination",
     "origin_city": "travelling from",
     "start_date": "start date",

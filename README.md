@@ -72,7 +72,7 @@ The app can only see files it created.
    | Question title contains | Type |
    |---|---|
    | `your name` | Short answer |
-   | `email` | Short answer (or tick "Collect email addresses") |
+   | `mail` (e.g. "Email" or "Gmail address") | Short answer |
    | `destination` | Short answer, e.g. "Destination (city, country)" |
    | `travelling from` | Short answer |
    | `start date` | Date |
