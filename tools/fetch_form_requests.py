@@ -4,6 +4,7 @@ Usage:
     python tools/fetch_form_requests.py --create-sheet   # one time: make the sheet the Form writes to
     python tools/fetch_form_requests.py --list           # show requests not planned yet
     python tools/fetch_form_requests.py                  # write the oldest pending one to inputs/trip_request.json
+    python tools/fetch_form_requests.py --id <id>        # write that pending one instead (auto_plan.py uses this)
     python tools/fetch_form_requests.py --done <id>      # mark a request planned (after delivery)
 
 The sheet must be created by this tool: the app's drive.file scope can only read files it created.
@@ -148,6 +149,13 @@ def main():
         for r in map(to_request, pending):
             print(f"{r['response_id']}  {r['traveler_name']}: {r['destination']} from {r['start_date']}")
         return print(f"{len(pending)} pending.")
+    if arg == "--id":
+        if len(sys.argv) < 3:
+            sys.exit("Usage: fetch_form_requests.py --id <response_id>")
+        match = [r for r in pending if r["response_id"] == sys.argv[2]]
+        if not match:
+            sys.exit(f"{sys.argv[2]} is not a pending request (already planned, or no such response).")
+        pending = match + [r for r in pending if r is not match[0]]
 
     req = to_request(pending[0])
     OUT_FILE.parent.mkdir(exist_ok=True)

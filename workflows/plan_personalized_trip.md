@@ -36,6 +36,8 @@ Requests from the Google Form arrive via `tools/fetch_form_requests.py` (the `/p
 | Check itinerary | `tools/validate_itinerary.py` |
 | Render PDF | `tools/render_trip_pdf.py` |
 | Upload to owner's Drive and share with traveller | `tools/upload_to_drive.py` |
+| Email the PDF to the traveller | `tools/send_plan_email.py` |
+| Run all of this unattended for new form responses | `tools/auto_plan.py` (Task Scheduler) |
 
 Run Python with the project venv: `.venv\Scripts\python.exe` (on macOS/Linux: `.venv/bin/python`).
 
@@ -119,7 +121,31 @@ only open the PDF if the renderer printed a warning.
   "Anyone with the link" in Drive and send it themselves (WhatsApp, email).
 - If the upload fails, the local PDF in `outputs/` is still the deliverable. Report the failure and offer to retry.
 
+**Form requests (`/plan-trips`) use email instead of the share:**
+```
+.venv\Scripts\python.exe tools/upload_to_drive.py .tmp/<trip_slug> --no-share
+.venv\Scripts\python.exe tools/send_plan_email.py .tmp/<trip_slug>
+```
+- The PDF goes out as an attachment from the owner's Gmail (SMTP + `GMAIL_APP_PASSWORD`), BCC to the owner. This works
+  for any address, not just Google accounts. The Drive upload is only a backup copy, and `--no-share` avoids a
+  second email.
+- Gmail goes through SMTP because the device sign-in flow can't grant Gmail scopes.
+- `--to <addr>` sends to another address, for testing.
+
 Finish by giving the user the Drive link (or the local path) and a 3–4 line summary.
+
+## Automatic mode
+`tools/auto_plan.py` runs every 15 min from Windows Task Scheduler (task "TripPlanner"; registration command in
+README). It reads the response sheet in plain Python, so a run with nothing pending costs no tokens. For each new
+response (max 3 per run) it starts a headless `claude -p` session that runs the plan-trips skill with that
+`response_id`.
+- A request counts as done only after the skill runs `--done`, which happens after the email is sent.
+- A request is retried on the next run, and is skipped after 2 failed attempts. The owner is emailed when that
+  happens; `inputs/auto_attempts.json` holds the counts, and deleting an entry re-enables it.
+- Logs: `.tmp/logs/auto_plan.log` and `.tmp/logs/<response_id>.log`.
+- The task runs only while the owner is logged in, because headless Claude needs the user's sign-in.
+- The headless session's permissions are the `ALLOWED_TOOLS` list in `auto_plan.py` (project tools, web search, writes
+  under `.tmp/`). If a session stalls on a denied tool, its log says so: add that tool to the list.
 
 **One-time setup:** see README "Google setup". You need a Google Cloud project with the Drive and Sheets APIs enabled,
 the consent screen published with only the `drive.file` scope, a "TVs and Limited Input devices" OAuth client saved

@@ -11,14 +11,15 @@ It's built on the **WAT pattern** (Workflows, Agents, Tools):
 
 ```
 Google Form ─► fetch_form_requests.py ─► validate_trip_request.py ─► Claude researches & plans
-   ─► validate_itinerary.py ─► render_trip_pdf.py ─► upload_to_drive.py (shared with the traveller)
+   ─► validate_itinerary.py ─► render_trip_pdf.py ─► upload_to_drive.py (backup) ─► send_plan_email.py
 ```
+`auto_plan.py` runs this whole chain on a schedule for each new form response.
 
 ## Ways to use it
 
 ### 1. Ask for a plan (no setup)
-Fill in the trip request form you were sent. Your plan arrives in your Gmail as a Google Drive share,
-usually within a day or two. Use an email address that has a Google account.
+Fill in the trip request form you were sent. Your plan arrives by email as a PDF attachment, usually within the
+hour. Any email address works.
 
 ### 2. Run it yourself
 You need [Claude Code](https://claude.com/claude-code) (a Claude Pro plan or higher) and Python 3.10+.
@@ -40,7 +41,7 @@ Google Drive delivery is optional. Skip it, or do the Google setup below.
 | Field | Example |
 |---|---|
 | `traveler_name` | Asha |
-| `traveler_email` | asha@gmail.com (optional, for Drive delivery) |
+| `traveler_email` | asha@gmail.com (optional, for email delivery) |
 | `destination` / `origin_city` | Lisbon, Portugal / Hyderabad, India |
 | `start_date` / `num_days` | 2027-03-10 / 5 (1–30) |
 | `what_they_like` / `trip_goals` | lists of short phrases |
@@ -88,6 +89,31 @@ The app can only see files it created.
 3. In the form: **Responses → Link to Sheets → Select existing spreadsheet** and pick "Trip Planner Requests".
 4. Share the form link. When requests come in, open Claude Code here and run **`/plan-trips`**.
    It plans one request per run; use `/clear` between trips to keep token use low.
+   Or let it run by itself (below).
+
+### Emailing plans
+
+Plans are emailed as a PDF attachment from `OWNER_EMAIL`'s Gmail, with a BCC to you.
+1. Turn on [2-Step Verification](https://myaccount.google.com/signinoptions/two-step-verification) for that account.
+2. Create an [App Password](https://myaccount.google.com/apppasswords) and put it in `.env` as `GMAIL_APP_PASSWORD`.
+3. Test it: `python tools/send_plan_email.py .tmp/<trip_slug> --to <your email>`.
+
+### Running automatically (Windows)
+
+`tools/auto_plan.py` checks the form sheet and, for each new response, runs Claude Code headless to plan and email
+it. Check what it would do with `python tools/auto_plan.py --dry-run`, then register it to run every 15 minutes
+(in PowerShell, from the project folder):
+
+```powershell
+$repo = (Get-Location).Path
+$action   = New-ScheduledTaskAction -Execute "$repo\.venv\Scripts\pythonw.exe" -Argument "tools\auto_plan.py" -WorkingDirectory $repo
+$trigger  = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)
+$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable
+Register-ScheduledTask -TaskName "TripPlanner" -Action $action -Trigger $trigger -Settings $settings
+```
+
+It runs only while you're logged in, because Claude Code needs your sign-in. Pause it with `Disable-ScheduledTask TripPlanner`.
+Logs are in `.tmp/logs/`.
 
 ## Project layout
 

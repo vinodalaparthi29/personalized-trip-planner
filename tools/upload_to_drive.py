@@ -2,11 +2,13 @@
 
 Usage:
     python tools/upload_to_drive.py .tmp/<trip_slug>
+    python tools/upload_to_drive.py .tmp/<trip_slug> --no-share   # backup copy only
     python tools/upload_to_drive.py --check-credentials
 
 Uploads outputs/<trip_slug>_travel_plan.pdf into a "Travel Plans" folder in OWNER_EMAIL's Drive,
 replacing the file if this trip was uploaded before, then shares it (view only) with the request's
 traveler_email. Google emails the traveller a "shared with you" link; they don't sign in to anything.
+With --no-share it skips the share (used when send_plan_email.py emails the PDF instead).
 
 Sign-in is handled by google_auth.py (one-time device sign-in for the owner).
 """
@@ -84,7 +86,9 @@ def main():
     print(f"OK: {action} {pdf_path.name} in Drive/{FOLDER_NAME}")
 
     email = req.get("traveler_email")
-    if not email:
+    if "--no-share" in sys.argv:
+        print("NOTE: --no-share, so the plan was not shared. Drive link:")
+    elif not email:
         print("NOTE: no traveler_email, so the plan was not shared. Send this link yourself:")
     else:
         try:
