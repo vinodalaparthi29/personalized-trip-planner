@@ -1,5 +1,6 @@
 python-dotenv
 reportlab
+pillow
 google-api-python-client
 google-auth
 requests

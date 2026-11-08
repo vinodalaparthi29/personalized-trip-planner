@@ -1,7 +1,7 @@
 # Personalized Trip Planner
 
-Turns a short trip request into a polished PDF travel plan: events happening during your dates, a day-by-day
-itinerary sized to your trip, how to get to each place, and why each pick fits *you*.
+Turns a short trip request into a compact PDF travel plan with photos (7 pages at most): events happening during
+your dates, a day-by-day itinerary sized to your trip, how to get to each place, and why each pick fits *you*.
 
 It's built on the **WAT pattern** (Workflows, Agents, Tools):
 
@@ -11,7 +11,8 @@ It's built on the **WAT pattern** (Workflows, Agents, Tools):
 
 ```
 Google Form ─► fetch_form_requests.py ─► validate_trip_request.py ─► Claude researches & plans
-   ─► validate_itinerary.py ─► render_trip_pdf.py ─► upload_to_drive.py (backup) ─► send_plan_email.py
+   ─► validate_itinerary.py ─► fetch_trip_photos.py ─► render_trip_pdf.py ─► upload_to_drive.py (backup)
+   ─► send_plan_email.py
 ```
 `auto_plan.py` runs this whole chain on a schedule for each new form response.
 

@@ -17,6 +17,9 @@ BLOCK_FIELDS = ["time_of_day", "activity", "location", "how_to_get_there", "why_
 EVENT_FIELDS = ["name", "dates", "venue", "why_for_you", "how_to_get_there", "tickets", "source_url", "status"]
 TOP_LEVEL = ["summary", "must_not_miss_events", "getting_there", "getting_around",
              "where_to_stay", "days", "food", "goals_map", "practical", "sources"]
+MAX_DAY_PHOTOS = 2
+MAX_FOOD = 6
+WORD_LIMITS = {"summary": 50, "why_for_you": 25, "how_to_get_there": 20, "details": 20, "tip": 15}
 
 
 def norm(text):
@@ -94,7 +97,42 @@ def check(req, it):
     if not it["food"]:
         warnings.append("No food recommendations.")
 
+    warnings += compact_warnings(it)
     return errors, warnings
+
+
+def too_long(items, field, limit):
+    """Count the items whose text field runs over the word limit."""
+    return sum(len(str(item.get(field) or "").split()) > limit for item in items)
+
+
+def compact_warnings(it):
+    """Photo and length guidance. These never block: the renderer still fits what it can into the page cap."""
+    warnings = []
+    days = it["days"]
+    blocks = [block for day in days for block in day.get("blocks") or []]
+
+    if not it.get("cover_photo"):
+        warnings.append("No cover_photo.")
+    no_photos = [str(i) for i, day in enumerate(days, 1) if not day.get("photos")]
+    if no_photos:
+        warnings.append(f"No photos on day(s) {', '.join(no_photos)}.")
+    many_photos = [str(i) for i, day in enumerate(days, 1) if len(day.get("photos") or []) > MAX_DAY_PHOTOS]
+    if many_photos:
+        warnings.append(f"More than {MAX_DAY_PHOTOS} photos on day(s) {', '.join(many_photos)}; extras are ignored.")
+    if len(it["food"]) > MAX_FOOD:
+        warnings.append(f"{len(it['food'])} food entries; keep to {MAX_FOOD} or fewer.")
+    no_amount = [f.get("name", "?") for f in it["food"] if not any(c.isdigit() for c in str(f.get("price") or ""))]
+    if no_amount:
+        warnings.append(f"Food price has no amount (use e.g. 800-1,200 per person, not a symbol or 'varies'): {', '.join(no_amount)}.")
+
+    if len(str(it["summary"]).split()) > WORD_LIMITS["summary"]:
+        warnings.append(f"summary is over {WORD_LIMITS['summary']} words.")
+    for field in ("why_for_you", "how_to_get_there", "details", "tip"):
+        count = too_long(blocks, field, WORD_LIMITS[field])
+        if count:
+            warnings.append(f"{count} block(s) have {field} over {WORD_LIMITS[field]} words.")
+    return warnings
 
 
 def main():

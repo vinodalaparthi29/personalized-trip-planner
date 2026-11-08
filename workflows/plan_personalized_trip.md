@@ -1,8 +1,8 @@
 # Workflow: Personalized Event & Travel Planner
 
 ## Objective
-Turn one traveller's trip request into a polished, deeply personalized PDF travel plan covering:
-events not to miss during their dates, a day-by-day plan for exactly the number of days requested,
+Turn one traveller's trip request into a compact, deeply personalized PDF travel plan with photos, 7 pages at most,
+covering: events not to miss during their dates, a day-by-day plan for exactly the number of days requested,
 how to get to each place, what to do there, and why each item fits *this* traveller.
 
 ## Required inputs
@@ -34,6 +34,7 @@ Requests from the Google Form arrive via `tools/fetch_form_requests.py` (the `/p
 | Validate & normalize request | `tools/validate_trip_request.py` |
 | Research | Agent's built-in web search (no API key needed) |
 | Check itinerary | `tools/validate_itinerary.py` |
+| Download photos (Wikipedia / Wikimedia Commons, no key) | `tools/fetch_trip_photos.py` |
 | Render PDF | `tools/render_trip_pdf.py` |
 | Upload to owner's Drive and share with traveller | `tools/upload_to_drive.py` |
 | Email the PDF to the traveller | `tools/send_plan_email.py` |
@@ -94,21 +95,46 @@ Write `.tmp/<trip_slug>/itinerary.json` following the schema below.
 - Put nearby places on the same day to cut down transit. Each `how_to_get_there` gives a concrete mode,
   the stop or landmark, and the time (e.g. "Metro Line 2 to Baixa-Chiado, 8 min walk").
 - Costs are in local currency, with an approximate conversion to the traveller's home currency where useful.
+- Every `food` price is a real amount per person (`₹800–1,200`), never a symbol tier (`₹₹`, `$$`) or "varies". Take it
+  from the research, and if a place publishes no prices, give the typical range for that kind of place with "about".
+  The only exception is a meal already paid for, such as "Included in the boat rate".
+
+**Keep it short (the PDF is 7 pages at most, and travellers won't read more):**
+- Word limits: `summary` 50, `why_for_you` 25, `how_to_get_there` 20, `details` 20, `tip` 15. At most 6 `food` entries.
+- The renderer drops `details` and then `tip` when a trip won't fit, so anything the traveller must know
+  (book ahead, closed on Mondays) goes in `how_to_get_there` or `practical.before_you_go`.
+
+**Choose photos (they should show what's actually recommended):**
+- `cover_photo`: the destination's best landscape. Each day's `photos`: up to 2, mixing landscapes, monuments and
+  places on that day's plan. Each `food` entry's `photo`: the dish to order, since most restaurants have no free photo.
+- Use the **exact English Wikipedia article title** (`Basilica of Bom Jesus`, `Fontainhas (quarter)`, `Xacuti`). No
+  separate searching is needed. For a name shared by several places, add the location (`Blue Grotto, Capri`).
 
 ### 4. Validate
 ```
 .venv\Scripts\python.exe tools/validate_itinerary.py .tmp/<trip_slug>
 ```
 Fix every reported problem (missing likes or goals, wrong dates, missing fields) and re-run until it says OK.
+Warnings don't block, but fix missing photos and text over the word limits, as they cost pages.
 
-### 5. Render and check the PDF
+### 5. Fetch photos
+```
+.venv\Scripts\python.exe tools/fetch_trip_photos.py .tmp/<trip_slug>
+```
+Prints `title -> matched file` per photo. **Read the matched filenames:** if one is clearly the wrong place, change
+that title in `itinerary.json` and re-run (photos already downloaded aren't fetched again). A skipped photo is fine;
+the plan just goes without it. This step never blocks a trip, even if Wikimedia is down.
+
+### 6. Render and check the PDF
 ```
 .venv\Scripts\python.exe tools/render_trip_pdf.py .tmp/<trip_slug>
 ```
-Output: `outputs/<trip_slug>_travel_plan.pdf`. The renderer's checks plus the validator cover day count and dates;
-only open the PDF if the renderer printed a warning.
+Output: `outputs/<trip_slug>_travel_plan.pdf`. It prints `pages=N density=K` (1 is the richest of 6 layouts; it picks
+the richest that fits). The renderer's checks plus the validator cover day count and dates; only open the PDF if the
+renderer printed a warning. If it warns about being over 7 pages, shorten the longest text and re-render. Unattended
+runs should still deliver if that doesn't work.
 
-### 6. Upload to the owner's Drive and share it with the traveller
+### 7. Upload to the owner's Drive and share it with the traveller
 ```
 .venv\Scripts\python.exe tools/upload_to_drive.py .tmp/<trip_slug>
 ```
@@ -155,7 +181,8 @@ To check it still works: `upload_to_drive.py --check-credentials`.
 ## itinerary.json schema
 ```json
 {
-  "summary": "2-4 sentences, personal, tied to why_visiting and the goals",
+  "summary": "2-3 sentences, personal, tied to why_visiting and the goals",
+  "cover_photo": "Wikipedia article title",
   "no_events_note": "Only if must_not_miss_events is empty: why, and what to do instead",
   "must_not_miss_events": [{
     "name": "", "dates": ["YYYY-MM-DD"], "time": "19:00-23:00", "venue": "",
@@ -170,7 +197,8 @@ To check it still works: `upload_to_drive.py --check-credentials`.
   "getting_around": {"overview": "", "tips": [""]},
   "where_to_stay": [{"area": "", "why": "", "price_range": "", "example": "optional hotel name"}],
   "days": [{
-    "date": "YYYY-MM-DD", "theme": "short title", "summary": "optional 1-2 sentences",
+    "date": "YYYY-MM-DD", "theme": "short title", "summary": "optional 1 sentence",
+    "photos": ["Wikipedia article title", "up to 2"],
     "blocks": [{
       "time_of_day": "morning | afternoon | evening",
       "activity": "", "location": "", "details": "optional",
@@ -178,7 +206,7 @@ To check it still works: `upload_to_drive.py --check-credentials`.
       "why_for_you": "", "tip": "optional", "serves": ["verbatim like/goal"]
     }]
   }],
-  "food": [{"name": "", "area": "", "what_to_order": "", "why_for_you": "", "price": ""}],
+  "food": [{"name": "", "area": "", "what_to_order": "", "why_for_you": "", "price": "₹800–1,200 (amount per person)", "photo": "dish's Wikipedia article title"}],
   "goals_map": [{"goal": "verbatim goal", "how": "", "days": [1, 3]}],
   "practical": {
     "weather": "", "currency": "",
@@ -197,6 +225,7 @@ To check it still works: `upload_to_drive.py --check-credentials`.
   events, mark them `tentative`, and say "verify closer to the date" in `tip`.
 - **Very short stay (1–2 days):** focus on the single best thing for each like and skip day trips.
 - **Long stay (10+ days):** add rest or flex days, group days by neighbourhood or region, and consider a base change.
+  Long trips get fewer photos and briefer days to stay within 7 pages, so stick closely to the word limits.
 - **A like that doesn't fit the destination** (e.g. "skiing" in Goa): offer the closest option and say so
   plainly in `why_for_you`. Don't pretend it fits.
 - **Obscure destination, thin web data:** say so in the summary, and prefer fewer, well-sourced recommendations
@@ -226,3 +255,13 @@ To check it still works: `upload_to_drive.py --check-credentials`.
 - If the consent screen is ever set back to "Testing", travellers must be added as test users, and their saved
   approvals expire after 7 days (they'd have to approve again).
 - `serves` matching ignores case and extra spaces but otherwise needs exact text, so copy likes and goals verbatim.
+- PDFs used to run 11–17 pages (39 for a 30-day trip), mostly from forced page breaks and repeated information rather
+  than the content itself. Sections now flow continuously, and the renderer steps down through densities to fit 7 pages.
+- Wikimedia returns HTTP 429 with `Retry-After` after about 10 quick requests, so `fetch_trip_photos.py` batches title
+  lookups, spaces out requests and honours that header. It needs a descriptive `User-Agent`; don't put an email in it.
+- Wikipedia *search* gives wrong photos ("Viva Panjim" returned Goa Carnival), so lookups use exact titles. Lead images can
+  be logos, which the tool filters out. Commons matches can still be the wrong place: "Blue Grotto" matched one in Malta,
+  which is why the tool prints every matched filename for checking.
+- Food prices written as `₹₹` or "varies" tell the traveller nothing, and 15 of 41 across the first 8 trips had no
+  amount. The validator now warns on any food price without a number.
+- Photo licences (mostly CC BY / CC BY-SA) require credit, so the PDF's last page lists author and licence per photo.
