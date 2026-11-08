@@ -109,7 +109,7 @@ it. Check what it would do with `python tools/auto_plan.py --dry-run`, then regi
 $repo = (Get-Location).Path
 $action   = New-ScheduledTaskAction -Execute "$repo\.venv\Scripts\pythonw.exe" -Argument "tools\auto_plan.py" -WorkingDirectory $repo
 $trigger  = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)
-$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable
+$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 Register-ScheduledTask -TaskName "TripPlanner" -Action $action -Trigger $trigger -Settings $settings
 ```
 

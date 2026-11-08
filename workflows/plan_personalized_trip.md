@@ -170,6 +170,9 @@ response (max 3 per run) it starts a headless `claude -p` session that runs the 
   happens; `inputs/auto_attempts.json` holds the counts, and deleting an entry re-enables it.
 - Logs: `.tmp/logs/auto_plan.log` and `.tmp/logs/<response_id>.log`.
 - The task runs only while the owner is logged in, because headless Claude needs the user's sign-in.
+- It must be allowed to run on battery. Task Scheduler's default skips every run while a laptop is unplugged, and a
+  skipped run leaves no trace in `auto_plan.log`. The log also stays silent when nothing is pending, so check
+  `Get-ScheduledTaskInfo TripPlanner` (last run, missed runs) rather than judging by the log.
 - The headless session's permissions are the `ALLOWED_TOOLS` list in `auto_plan.py` (project tools, web search, writes
   under `.tmp/`). If a session stalls on a denied tool, its log says so: add that tool to the list.
 
